@@ -1,0 +1,76 @@
+<html>
+<head>
+    <title>Client performance history</title>
+    <script type="text/javascript" src="jquery.min.js"></script>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+<div class="container">
+    <h1>Client performance history benchmark</h1>
+    <button onclick="run()">Start/stop benchmark</button>
+    <button onclick="correllationMatrix()">Create matrix</button>
+    <div>Benchmark state: <span id="out">not running</span></div>
+
+    <h3>Participation history</h3>
+    <table id="data-table">
+      <tr>
+        <th>t</th>
+        <th>compute units</th>
+      </tr>
+    </table>
+
+
+    <h3>Autocorrellation matrix</h3>
+    <table id="matrix-table">
+
+    </table>
+</div>
+
+<script>
+  var worker = new Worker("bench-worker.js");
+  var started = false;
+  var t = 0;
+  var data = [];
+
+  function run() {
+    if (started === false) {
+      $('#out').html("running...");
+      worker.postMessage("start");
+      started = true;
+    } else {
+      $('#out').html("not running");
+      worker.postMessage("stop");
+      started = false;
+    }
+  }
+
+  function R(i) {
+    var N = data.length;
+
+    var sum = 0;
+    for (var k = 0; k < N; k++) {
+      sum += data[k] * data[Math.max(0, k - i)];
+    }
+
+    return 1/N * sum;
+  }
+
+  function correllationMatrix() {
+    var N = data.length;
+    for (var i = 0; i < N; i++) {
+      $('#matrix-table').append("<tr>");
+      for (var j = 0; j < N; j++) {
+        $('#matrix-table').append("<td>" + R(Math.abs(j - i)));
+      }
+      $('#matrix-table').append("</tr>");
+    }
+  }
+
+  worker.onmessage = function (e) {
+    t++;
+    $('#data-table').append("<tr><td>" + t +"</td><td>" + e.data + "</td></tr>");
+    data.push(e.data);
+  }
+</script>
+</body>
+</html>
