@@ -2,13 +2,15 @@
 <head>
     <title>Client performance history</title>
     <script type="text/javascript" src="jquery.min.js"></script>
+    <script type="text/javascript" src="gauss.js"></script>
+
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
 <div class="container">
     <h1>Client performance history benchmark</h1>
     <button onclick="run()">Start/stop benchmark</button>
-    <button onclick="correllationMatrix()">Create matrix</button>
+    <button onclick="calculate()">Create matrix</button>
     <div>Benchmark state: <span id="out">not running</span></div>
 
     <h3>Participation history</h3>
@@ -26,6 +28,10 @@
 
     <h3>Autocorrellation vector</h3>
     <table id="vector-table">
+    </table>
+
+    <h3>Weights</h3>
+    <table id="weights-table">
     </table>
 </div>
 
@@ -74,7 +80,7 @@
     return autocovariance(i) / autocovariance(0);
   }
 
-  function correllationMatrix() {
+  function calculate() {
     const N = data.length;
     for (let i = 0; i < N; i++) {
       $('#matrix-table').append("<tr>");
@@ -90,6 +96,12 @@
       r[i] = rcorr;
       $('#vector-table').append("<tr><td>" + rcorr + "</td></tr>")
     }
+
+    let weights = gauss(R, r);
+    for (let i = 0; i < weights.length; i++) {
+        $('#weights-table').append("<tr><td>" + weights[i] + "</td></tr>")
+    }
+
   }
 
   worker.onmessage = function (e) {
