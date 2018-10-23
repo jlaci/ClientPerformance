@@ -22,15 +22,21 @@
 
     <h3>Autocorrellation matrix</h3>
     <table id="matrix-table">
+    </table>
 
+    <h3>Autocorrellation vector</h3>
+    <table id="vector-table">
     </table>
 </div>
 
 <script>
-  var worker = new Worker("bench-worker.js");
-  var started = false;
-  var t = 0;
-  var data = [];
+  let worker = new Worker("bench-worker.js");
+  let started = false;
+  let t = 0;
+  let data = [];
+
+  let R = [];
+  let r = [];
 
   function run() {
     if (started === false) {
@@ -44,25 +50,45 @@
     }
   }
 
-  function R(i) {
-    var N = data.length;
+  function average() {
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) {
+        sum += data[i]
+      }
+      return sum / data.length
+  }
 
-    var sum = 0;
-    for (var k = 0; k < N; k++) {
-      sum += data[k] * data[Math.max(0, k - i)];
+  function autocovariance(i) {
+    const N = data.length;
+    const avg = average();
+
+    let sum = 0;
+    for (let k = i; k < N; k++) {
+      sum += (data[k] - avg) * (data[k - i] - avg);
     }
 
     return 1/N * sum;
   }
 
+  function autocorrellation(i) {
+    return autocovariance(i) / autocovariance(0);
+  }
+
   function correllationMatrix() {
-    var N = data.length;
-    for (var i = 0; i < N; i++) {
+    const N = data.length;
+    for (let i = 0; i < N; i++) {
       $('#matrix-table').append("<tr>");
-      for (var j = 0; j < N; j++) {
-        $('#matrix-table').append("<td>" + R(Math.abs(j - i)));
+      R[i] = [];
+      for (let j = 0; j < N; j++) {
+        let corr = autocorrellation(Math.abs(j - i));
+        R[i][j] = corr;
+        $('#matrix-table').append("<td>" + corr);
       }
       $('#matrix-table').append("</tr>");
+
+      let rcorr = autocorrellation(i);
+      r[i] = rcorr;
+      $('#vector-table').append("<tr><td>" + rcorr + "</td></tr>")
     }
   }
 
