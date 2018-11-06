@@ -92,7 +92,7 @@
       }
       $('#matrix-table').append("</tr>");
 
-      let rcorr = autocorrellation(i);
+      let rcorr = autocorrellation(i + 1);
       r[i] = rcorr;
       $('#vector-table').append("<tr><td>" + rcorr + "</td></tr>")
     }
