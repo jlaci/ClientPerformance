@@ -11,8 +11,8 @@ number_of_measurements = len(raw_data[0])
 
 
 # Settings
-min_history = 2
-max_history = 5
+min_history = 5
+max_history = 6
 
 # Format the data into feature and values
 data = []
@@ -67,6 +67,18 @@ def calculate_weights(data_matrix):
 
     return average_weights
 
+
+def predict(data_set, w):
+    predictions = []
+
+    for data_row in data_set:
+        prediction = 0
+        for i in range(len(data_row)):
+            prediction += data_row[i] * w[i]
+        predictions.append(prediction)
+
+    return predictions
+
 # Learning with Linear Regression
 training_percentage = 0.5
 
@@ -78,17 +90,18 @@ for data_set in data:
 
     # Linear predictor with statistical weights
     w = calculate_weights(training_set)
+    m1_prediction = predict(validation_set, w)
 
     # Linear Regression model
     model = linear_model.LinearRegression()
     model.fit(training_set[:, list(range(0, value_column))], training_set[:, value_column])
-    prediction = model.predict(validation_set[:, list(range(0, value_column))])
+    m2_prediction = model.predict(validation_set[:, list(range(0, value_column))])
 
     # Print the accuracy
     sum_error = 0
     sum_data = 0
     for i in range(len(validation_set)):
-        sum_error += math.fabs(prediction[i] - validation_set[i][value_column])
+        sum_error += math.fabs(m2_prediction[i] - validation_set[i][value_column])
         sum_data += validation_set[i][0]
 
     average_error = sum_error / len(validation_set)
@@ -100,10 +113,10 @@ for data_set in data:
     # Plot the result
     fig = plt.figure()
     ax = plt.axes()
-    x_validate = range(len(prediction))
+    x_validate = range(len(m2_prediction))
 
     # Plot predicted
-    ax.plot(x_validate, prediction)
+    ax.plot(x_validate, m2_prediction)
 
     # Plot actual
     ax.plot(x_validate, validation_set[:, value_column])
