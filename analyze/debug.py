@@ -11,8 +11,8 @@ number_of_measurements = len(raw_data[0])
 
 
 # Settings
-min_history = 5
-max_history = 6
+min_history = 4
+max_history = 5
 
 # Format the data into feature and values
 data = []
@@ -41,8 +41,14 @@ def autocovariance(data_vector, x):
     return 1/n * sum
 
 
-def autocorrellation(data_vector, x):
-    return autocovariance(data_vector, x) / autocovariance(data_vector, 0)
+def autocorrellation(data_vector, lag):
+    #return autocovariance(data_vector, x) / autocovariance(data_vector, 0)
+    sum = 0
+    for k in range(len(data_vector)):
+        sum += data_vector[k] * data_vector[k - lag]
+    return sum / len(data_vector)
+
+
 
 
 def calculate_weights(data_matrix):
@@ -98,17 +104,21 @@ for data_set in data:
     m2_prediction = model.predict(validation_set[:, list(range(0, value_column))])
 
     # Print the accuracy
-    sum_error = 0
+    m1_sum_error = 0
+    m2_sum_error = 0
     sum_data = 0
     for i in range(len(validation_set)):
-        sum_error += math.fabs(m2_prediction[i] - validation_set[i][value_column])
+        m1_sum_error += math.fabs(m1_prediction[i] - validation_set[i][value_column])
+        m2_sum_error += math.fabs(m2_prediction[i] - validation_set[i][value_column])
         sum_data += validation_set[i][0]
 
-    average_error = sum_error / len(validation_set)
+    m1_average_error = m1_sum_error / len(validation_set)
+    m2_average_error = m2_sum_error / len(validation_set)
     average_data = sum_data / len(validation_set)
 
     print("History is ", len(data_set[0]) - 1)
-    print("Average error is %f (%f%%)" % (average_error, average_error / average_data * 100))
+    print("M1 Average error is %f (%f%%)" % (m1_average_error, m1_average_error / average_data * 100))
+    print("M2 Average error is %f (%f%%)" % (m2_average_error, m2_average_error / average_data * 100))
 
     # Plot the result
     fig = plt.figure()
