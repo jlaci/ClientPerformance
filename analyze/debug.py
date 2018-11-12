@@ -29,26 +29,11 @@ for history_length in range(min_history + 1, max_history + 2):
     data.append(history_data)
 
 
-# Linear predictor with calculated weights
-def autocovariance(data_vector, x):
-    n = len(data_vector)
-    avg = np.mean(data_vector)
-
-    sum = 0
-    for k in range(x, n):
-        sum += (data_vector[k] - avg) * (data_vector[k - x] - avg)
-
-    return 1/n * sum
-
-
 def autocorrellation(data_vector, lag):
-    #return autocovariance(data_vector, x) / autocovariance(data_vector, 0)
     sum = 0
     for k in range(len(data_vector)):
         sum += data_vector[k] * data_vector[k - lag]
     return sum / len(data_vector)
-
-
 
 
 def calculate_weights(data_matrix):
