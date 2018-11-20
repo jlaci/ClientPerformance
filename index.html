@@ -11,6 +11,8 @@
     <h1>Client performance history benchmark</h1>
     <button onclick="run()">Start/stop benchmark</button>
     <button onclick="calculate()">Create matrix</button>
+    <button onclick="exportData()">Download data</button>
+    <a id="download-link"></a>
     <div>Benchmark state: <span id="out">not running</span></div>
 
     <h3>Participation history</h3>
@@ -101,7 +103,18 @@
     for (let i = 0; i < weights.length; i++) {
         $('#weights-table').append("<tr><td>" + weights[i] + "</td></tr>")
     }
-
+  }
+  
+  function exportData() {
+  	let str = ""
+  	for (let i = 0; i < data.length; i++) {
+  		str += data[i] + "%0A";
+  	}
+  	
+  	var link = $('#download-link');
+  	link.attr('href', 'data:application/octet-stream,'+ str)
+  	link.attr('download', 'data_' + new Date().toISOString() + '.csv')
+  	link[0].click()	
   }
 
   worker.onmessage = function (e) {

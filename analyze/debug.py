@@ -11,8 +11,8 @@ number_of_measurements = len(raw_data[0])
 
 
 # Settings
-min_history = 4
-max_history = 5
+min_history = 2
+max_history = 10
 
 # Format the data into feature and values
 data = []
@@ -31,9 +31,9 @@ for history_length in range(min_history + 1, max_history + 2):
 
 def autocorrellation(data_vector, lag):
     sum = 0
-    for k in range(len(data_vector)):
+    for k in range(len(data_vector) - 1):
         sum += data_vector[k] * data_vector[k - lag]
-    return sum / len(data_vector)
+    return sum / len(data_vector) - 1
 
 
 def calculate_weights(data_matrix):
@@ -59,10 +59,10 @@ def calculate_weights(data_matrix):
     return average_weights
 
 
-def predict(data_set, w):
+def predict(data_to_predict, w):
     predictions = []
 
-    for data_row in data_set:
+    for data_row in data_to_predict:
         prediction = 0
         for i in range(len(data_row)):
             prediction += data_row[i] * w[i]
@@ -91,19 +91,17 @@ for data_set in data:
     # Print the accuracy
     m1_sum_error = 0
     m2_sum_error = 0
-    sum_data = 0
-    for i in range(len(validation_set)):
-        m1_sum_error += math.fabs(m1_prediction[i] - validation_set[i][value_column])
-        m2_sum_error += math.fabs(m2_prediction[i] - validation_set[i][value_column])
-        sum_data += validation_set[i][0]
+    n = len(validation_set)
+    for i in range(n):
+        m1_sum_error += math.pow(m1_prediction[i] - validation_set[i][value_column], 2)
+        m2_sum_error += math.pow(m2_prediction[i] - validation_set[i][value_column], 2)
 
-    m1_average_error = m1_sum_error / len(validation_set)
-    m2_average_error = m2_sum_error / len(validation_set)
-    average_data = sum_data / len(validation_set)
+    m1_error = math.sqrt(m1_sum_error / n)
+    m2_error = math.sqrt(m2_sum_error / n)
 
     print("History is ", len(data_set[0]) - 1)
-    print("M1 Average error is %f (%f%%)" % (m1_average_error, m1_average_error / average_data * 100))
-    print("M2 Average error is %f (%f%%)" % (m2_average_error, m2_average_error / average_data * 100))
+    print("M1 Average error is %f" % m1_error)
+    print("M2 Average error is %f" % m2_error)
 
     # Plot the result
     fig = plt.figure()
