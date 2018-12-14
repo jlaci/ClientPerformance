@@ -2,13 +2,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math as math
 import random as random
-from sklearn import linear_model
-
+from sklearn import linear_model, neural_network
 
 # Import and visualize the data
 raw_data = np.genfromtxt('data/client_performance.csv', delimiter=";", dtype=float, encoding="utf-8-sig")
 number_of_measurements = len(raw_data[0])
 
+# Visualize on plot
+fig = plt.figure()
+ax = plt.axes()
+x = range(len(raw_data))
+
+for client in range(number_of_measurements):
+    ax.plot(x, [i[client] for i in raw_data])
 
 # Settings
 min_history = 2
@@ -31,9 +37,10 @@ for history_length in range(min_history + 1, max_history + 2):
 
 def autocorrellation(data_vector, lag):
     sum = 0
-    for k in range(len(data_vector) - 1):
-        sum += data_vector[k] * data_vector[k - lag]
-    return sum / len(data_vector) - 1
+    N = len(data_vector) - 1
+    for k in range(N):
+        sum += data_vector[k] * data_vector[max(0, k - lag)]  # TODO: handle negative indices
+    return sum / N
 
 
 def calculate_weights(data_matrix):
@@ -70,14 +77,17 @@ def predict(data_to_predict, w):
 
     return predictions
 
+
 # Learning with Linear Regression
-training_percentage = 0.5
+training_percentage = 0.75
 
 for data_set in data:
     cutting_point = math.floor(len(data_set) * training_percentage)
     training_set = np.asarray(data_set[:cutting_point])
     validation_set = np.asarray(data_set[cutting_point:])
     value_column = len(training_set[0]) - 1
+
+    history_length = value_column
 
     # Linear predictor with statistical weights
     w = calculate_weights(training_set)
@@ -88,20 +98,29 @@ for data_set in data:
     model.fit(training_set[:, list(range(0, value_column))], training_set[:, value_column])
     m2_prediction = model.predict(validation_set[:, list(range(0, value_column))])
 
+    # FF Neural network
+    model = neural_network.MLPRegressor(hidden_layer_sizes=(history_length,), activation='relu', learning_rate='adaptive', max_iter=10000)
+    model.fit(training_set[:, list(range(0, value_column))], training_set[:, value_column])
+    m3_prediction = model.predict(validation_set[:, list(range(0, value_column))])
+
     # Print the accuracy
     m1_sum_error = 0
     m2_sum_error = 0
+    m3_sum_error = 0
     n = len(validation_set)
     for i in range(n):
         m1_sum_error += math.pow(m1_prediction[i] - validation_set[i][value_column], 2)
         m2_sum_error += math.pow(m2_prediction[i] - validation_set[i][value_column], 2)
+        m3_sum_error += math.pow(m3_prediction[i] - validation_set[i][value_column], 2)
 
     m1_error = math.sqrt(m1_sum_error / n)
     m2_error = math.sqrt(m2_sum_error / n)
+    m3_error = math.sqrt(m3_sum_error / n)
 
     print("History is ", len(data_set[0]) - 1)
     print("M1 Average error is %f" % m1_error)
     print("M2 Average error is %f" % m2_error)
+    print("M3 Average error is %f" % m3_error)
 
     # Plot the result
     fig = plt.figure()

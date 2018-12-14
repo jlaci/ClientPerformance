@@ -1,0 +1,63 @@
+<html>
+<head>
+    <title>Client performance history</title>
+    <script type="text/javascript" src="jquery.min.js"></script>
+    <script type="text/javascript" src="gauss.js"></script>
+
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+<div class="container">
+    <h1>Client performance history benchmark</h1>
+    <button onclick="run()">Start/stop benchmark</button>
+    <button onclick="exportData()">Download data</button>
+    <a id="download-link"></a>
+    <div>Benchmark state: <span id="out">not running</span></div>
+
+    <h3>Data entries count: <span id="count"></span></h3>
+</div>
+
+<script>
+  let worker = new Worker("bench-worker.js");
+  let started = false;
+  let t = 0;
+  let data = [];
+
+  function run() {
+    if (started === false) {
+      $('#out').html("running...");
+      worker.postMessage("start");
+      started = true;
+    } else {
+      $('#out').html("not running");
+      worker.postMessage("stop");
+      started = false;
+    }
+  }
+  
+  function exportData() {
+  	let str = ""
+  	for (let i = 0; i < data.length; i++) {
+  		str += data[i] + "%0A";
+  	}
+  	
+  	var link = $('#download-link');
+  	link.attr('href', 'data:application/octet-stream,'+ str)
+  	link.attr('download', 'data_' + new Date().toISOString() + '.csv')
+  	link[0].click()	
+  }
+
+  worker.onmessage = function (e) {
+    t++;
+    data.push(e.data);
+    $('#count').text(t);
+    
+    if (t => 120) {
+    	$('#out').html("not running");
+      	worker.postMessage("stop");
+      	started = false;
+    }
+  }
+</script>
+</body>
+</html>
