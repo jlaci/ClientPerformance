@@ -16,62 +16,75 @@ x = range(len(raw_data))
 for client in range(number_of_measurements):
     ax.plot(x, [i[client] for i in raw_data])
 
-# Settings
+# Settings, history is the values considered before the current, eg.: in case of 1, 3, # the history length is 2
 min_history = 2
 max_history = 10
 
 # Format the data into feature and values
 data = []
 
-# Data array will contain data from each history length
-for history_length in range(min_history + 1, max_history + 2):
+# Data array will contain data from each history length (these will be inspected separately)
+for history_length in range(min_history, max_history):
+    # Data window is the current data plus history,
+    data_window_length = history_length * 2
     history_data = []
     for measurement in range(number_of_measurements):
         measurement_data = raw_data[:, measurement]
-        for value_to_predict in range(history_length, len(measurement_data)):
-            history_data.append(measurement_data[value_to_predict - history_length:value_to_predict])
+
+        # Start from the beginning of the data (we can first predict the end of the first data window)
+        for value_to_predict in range(data_window_length, len(measurement_data) - 1):
+            history_data.append(measurement_data[value_to_predict - data_window_length:value_to_predict + 1])
     # Shuffle the data points (vectors, not individual measurements!)
     random.shuffle(history_data)
     data.append(history_data)
 
 
-def autocorrellation(data_vector, lag):
+def autocorrellation(data_vector, history_length, lag):
     sum = 0
-    for k in range(lag, len(data_vector) - 1):
+    for k in range(len(data_vector) - history_length, len(data_vector)):
         sum += data_vector[k] * data_vector[k - lag]
-    return sum / max(1, len(data_vector) - 1 - lag)
+    return sum / history_length
 
 
-def calculate_weights(data_matrix):
-    average_weights = [0] * len(data_matrix[0])
+def autocorrellation2(data_vector, history_length, lag):
+    if lag == 0:
+        return 1
+    else:
+        start = len(data_vector) - history_length
+        normal = data_vector[start:]
+        shifted = data_vector[start - lag: len(data_vector) - lag]
+        return np.corrcoef(normal, shifted)[0, 1]
+
+
+def calculate_weights(data_matrix, n):
+    average_weights = [0] * n
 
     for data_vector in data_matrix:
-        n = len(data_vector)
         r_matrix = [[0] * n for i in range(n)]
         r_vector = [0] * n
         for i in range(n):
             for j in range(n):
-                r_matrix[i][j] = autocorrellation(data_vector, np.abs(j - i))
-            r_vector[i] = autocorrellation(data_vector, i + 1)
+                r_matrix[i][j] = autocorrellation(data_vector, n, np.abs(j - i))
+            r_vector[i] = autocorrellation(data_vector, n, i + 1)
 
         weights = np.linalg.solve(r_matrix, r_vector)
 
         for i in range(n):
             average_weights[i] += weights[i]
 
-    for i in range(len(data_matrix[0])):
+    for i in range(n):
         average_weights[i] = average_weights[i] / len(data_matrix)
 
     return average_weights
 
 
-def predict(data_to_predict, w):
+def predict(data_to_predict, history_length, w):
     predictions = []
 
     for data_row in data_to_predict:
         prediction = 0
-        for i in range(len(data_row)):
-            prediction += data_row[i] * w[i]
+        for i in range(history_length):
+            prediction += data_row[i + (len(data_row) - history_length)] * w[i]
         predictions.append(prediction)
 
     return predictions
@@ -80,27 +93,29 @@ def predict(data_to_predict, w):
 # Learning with Linear Regression
 training_percentage = 0.75
 
-for data_set in data:
+for i, data_set in enumerate(data):
     cutting_point = math.floor(len(data_set) * training_percentage)
     training_set = np.asarray(data_set[:cutting_point])
-    validation_set = np.asarray(data_set[cutting_point:])
     value_column = len(training_set[0]) - 1
+    training_data = training_set[:, list(range(0, value_column))]
+    validation_set = np.asarray(data_set[cutting_point:])
+    validation_data = validation_set[:, list(range(0, value_column))]
 
-    history_length = value_column
+    history_length = min_history + i
 
     # Linear predictor with statistical weights
-    w = calculate_weights(training_set)
-    m1_prediction = predict(validation_set, w)
+    w = calculate_weights(training_data, history_length)
+    m1_prediction = predict(validation_data, history_length, w)
 
     # Linear Regression model
     model = linear_model.LinearRegression()
-    model.fit(training_set[:, list(range(0, value_column))], training_set[:, value_column])
-    m2_prediction = model.predict(validation_set[:, list(range(0, value_column))])
+    model.fit(training_data, training_set[:, value_column])
+    m2_prediction = model.predict(validation_data)
 
     # FF Neural network
-    model = neural_network.MLPRegressor(hidden_layer_sizes=(history_length,), activation='relu', learning_rate='adaptive', max_iter=10000)
-    model.fit(training_set[:, list(range(0, value_column))], training_set[:, value_column])
-    m3_prediction = model.predict(validation_set[:, list(range(0, value_column))])
+    #model = neural_network.MLPRegressor(hidden_layer_sizes=(history_length,), activation='relu', learning_rate='adaptive', max_iter=10000)
+    #model.fit(training_data, training_set[:, value_column])
+    #m3_prediction = model.predict(validation_data)
 
     # Print the accuracy
     m1_sum_error = 0
@@ -110,13 +125,13 @@ for data_set in data:
     for i in range(n):
         m1_sum_error += math.pow(m1_prediction[i] - validation_set[i][value_column], 2)
         m2_sum_error += math.pow(m2_prediction[i] - validation_set[i][value_column], 2)
-        m3_sum_error += math.pow(m3_prediction[i] - validation_set[i][value_column], 2)
+        #m3_sum_error += math.pow(m3_prediction[i] - validation_set[i][value_column], 2)
 
     m1_error = math.sqrt(m1_sum_error / n)
     m2_error = math.sqrt(m2_sum_error / n)
     m3_error = math.sqrt(m3_sum_error / n)
 
-    print("History is ", len(data_set[0]) - 1)
+    print("History is ", history_length)
     print("M1 Average error is %f" % m1_error)
     print("M2 Average error is %f" % m2_error)
     print("M3 Average error is %f" % m3_error)
