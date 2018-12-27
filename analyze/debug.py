@@ -37,10 +37,9 @@ for history_length in range(min_history + 1, max_history + 2):
 
 def autocorrellation(data_vector, lag):
     sum = 0
-    N = len(data_vector) - 1
-    for k in range(N):
-        sum += data_vector[k] * data_vector[max(0, k - lag)]  # TODO: handle negative indices
-    return sum / N
+    for k in range(lag, len(data_vector) - 1):
+        sum += data_vector[k] * data_vector[k - lag]
+    return sum / max(1, len(data_vector) - 1 - lag)
 
 
 def calculate_weights(data_matrix):
