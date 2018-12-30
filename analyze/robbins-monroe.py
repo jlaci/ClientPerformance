@@ -38,5 +38,5 @@ for measurement in range(number_of_measurements):
             sumv = 0
             for v in range(history_length):
                 sumv += w_k[v] * data[k - v]
-            delta = 0.0000001
-            w[u] = w_k[u] - delta * (data[k] - sumv)
+            delta = 0.000000000005
+            w[u] = w_k[u] - delta * (data[k] - sumv) * data[k - u]
