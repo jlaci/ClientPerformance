@@ -5,6 +5,10 @@ import random as random
 from sklearn import linear_model
 
 # Parameters
+# Chain
+tr_per_block = 10
+hash_per_block = 4096
+
 # Global
 known_history = 10  # The number of previous observed values
 # Machine Learning
@@ -12,6 +16,8 @@ feature_vector_length = 3  # How many previous values to consider for prediction
 refit_after_every = 5  # How often do we refit our model
 # Statistical
 max_history = 3  # The maximum amount of previous values to consider for prediction (if -1, all will be considered)
+# RobbinsMonroe
+rb_history = 5
 
 # Import the data
 raw_data = np.genfromtxt('data/client_performance.csv', delimiter=";", dtype=float, encoding="utf-8-sig")
@@ -29,6 +35,27 @@ def autocorrellation(data_vector, n, lag):
     for k in range(len(data_vector) - n, len(data_vector)):
         sum += data_vector[k] * data_vector[k - lag]
     return sum / n
+
+
+def predict_old_way(data_vector):
+    # Probability of node ocntributing
+    count_contribute = 0
+    count_sleep = 0
+
+    sum = 0
+    for data_point in data_vector:
+        sum += data_point
+
+        # Calcualte the probability of contribution
+        if data_point == 0:
+            count_sleep += 1
+        else:
+            count_contribute += 1
+
+    avg = sum / len(data_vector)
+    p_contribute = count_contribute  / (count_contribute + count_sleep)
+    x_i = avg * p_contribute
+    return x_i
 
 
 def predict_statistical(data_vector):
@@ -55,6 +82,13 @@ def predict_statistical(data_vector):
     return prediction
 
 
+def predict_rbm(k, w, data):
+    prediction = 0
+    for i in range(rb_history):
+        prediction += w[i] * data[k - rb_history:k][i]
+    return prediction
+
+
 def train_ml(data_vector):
     # Format the data into feature and values for machine learning based predictors (with a sliding window over the data)
     ml_data = []
@@ -76,18 +110,57 @@ def predict_ml(data_vector, model):
     return model.predict(validation_data)
 
 
+mse_old = 0
+mse_st = 0
+mse_rbm = 0
+mse_ml = 0
+
 # Simulate the time
 for data_set in data_sets:
+    # Starter model for ML
     model_ml = None
+
+    # Make a calculation predicting the whole timeline, based on the previosu data
+    baseline = predict_old_way(data_set[:known_history])
+
+    # Initialize RobbinsMonroe weights
+    w = [1/rb_history for x in range(rb_history)]
+
     for k in range(known_history, len(data_set) - 1):
         if model_ml is None or k % refit_after_every == 0:
             model_ml = train_ml(data_set)
             #print('Retrained ML')
 
+        # Old way
+        err_old = baseline - data_set[k + 1]
+        mse_old += pow(err_old, 2)
+
+        # Statistical
         pred_st = predict_statistical(data_set[:k])
+        err_st = pred_st - data_set[k + 1]
+        mse_st += pow(err_st, 2)
         #print(k, 'ST Prediction:', pred_st, 'actual:', data_set[k + 1], 'error:', math.fabs(pred_st - data_set[k + 1]))
 
-        pred_ml = predict_ml(data_set[:k], model_ml)
-        #print(k, 'ML Prediction:', pred_ml, 'actual:', data_set[k + 1], 'error:', math.fabs(pred_ml - data_set[k + 1]))
-        print(pred_st, '\t', pred_ml[0], '\t', data_set[k + 1])
+        # Robbins Monroe
+        # Copy the previous state of the weight
+        w_k = w.copy()
 
+        # Update each w component based on the new data
+        for u in range(rb_history):
+            sumv = 0
+            for v in range(rb_history):
+                sumv += w_k[v] * data_set[k - v]
+            delta = 0.000000000005
+            w[u] = w_k[u] - delta * (data_set[k] - sumv) * data_set[k - u]
+        pred_rbm = predict_rbm(k, w, data_set)
+        err_rbm = pred_rbm - data_set[k + 1]
+        mse_rbm += pow(err_rbm, 2)
+
+        # Machine learning
+        pred_ml = predict_ml(data_set[:k], model_ml)
+        err_ml = pred_ml - data_set[k + 1]
+        mse_ml += pow(err_ml, 2)
+        #print(k, 'ML Prediction:', pred_ml, 'actual:', data_set[k + 1], 'error:', math.fabs(pred_ml - data_set[k + 1]))
+        print(pred_st, '\t', pred_ml[0], '\t', pred_rbm, '\t', data_set[k + 1])
+
+print('MSE: ', math.sqrt(mse_old), '\t', math.sqrt(mse_st), '\t', math.sqrt(mse_rbm), '\t', math.sqrt(mse_ml))
