@@ -18,7 +18,7 @@ max_history = 3  # The maximum amount of previous values to consider for predict
 rb_history = 5
 
 # Import the data
-raw_data = np.genfromtxt('data/foreground_merge_desktop.csv', delimiter=";", dtype=float, encoding="utf-8-sig")
+raw_data = np.genfromtxt('data/fore_and_background_merge_desktop_avg.csv', delimiter=";", dtype=float, encoding="utf-8-sig")
 number_of_measurements = len(raw_data[0])
 
 # Parse the data file to data sets
@@ -161,6 +161,6 @@ for data_set in data_sets:
         err_ml = pred_ml - data_set[k + 1]
         mse_ml += pow(err_ml, 2)
         #print(k, 'ML Prediction:', pred_ml, 'actual:', data_set[k + 1], 'error:', math.fabs(pred_ml - data_set[k + 1]))
-        print(pred_st, '\t', pred_ml[0], '\t', pred_rbm, '\t', data_set[k + 1])
+        print(baseline, '\t', pred_st, '\t', pred_ml[0], '\t', pred_rbm, '\t', data_set[k + 1])
 
 print('RMSE Old:', math.sqrt(mse_old/n), '\tStatistica:l', math.sqrt(mse_st/n), '\tRobbinsMonroe', math.sqrt(mse_rbm/n), '\tMachineLearning', math.sqrt(mse_ml/n))
