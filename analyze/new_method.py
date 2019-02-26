@@ -1,7 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import math as math
-import random as random
 from sklearn import linear_model
 
 # Parameters
@@ -20,7 +18,7 @@ max_history = 3  # The maximum amount of previous values to consider for predict
 rb_history = 5
 
 # Import the data
-raw_data = np.genfromtxt('data/client_performance.csv', delimiter=";", dtype=float, encoding="utf-8-sig")
+raw_data = np.genfromtxt('data/foreground_merge_desktop.csv', delimiter=";", dtype=float, encoding="utf-8-sig")
 number_of_measurements = len(raw_data[0])
 
 # Parse the data file to data sets
@@ -38,7 +36,7 @@ def autocorrellation(data_vector, n, lag):
 
 
 def predict_old_way(data_vector):
-    # Probability of node ocntributing
+    # Probability of node contributing
     count_contribute = 0
     count_sleep = 0
 
@@ -78,7 +76,7 @@ def predict_statistical(data_vector):
     # Predict with the weights
     prediction = 0
     for i in range(n):
-        prediction += data_vector[i + n] * w[i]
+        prediction += data_vector[i + n + 1] * w[i]  # TODO: miért kell a + 1?!
     return prediction
 
 
@@ -114,6 +112,7 @@ mse_old = 0
 mse_st = 0
 mse_rbm = 0
 mse_ml = 0
+n = 0
 
 # Simulate the time
 for data_set in data_sets:
@@ -127,6 +126,7 @@ for data_set in data_sets:
     w = [1/rb_history for x in range(rb_history)]
 
     for k in range(known_history, len(data_set) - 1):
+        n += 1
         if model_ml is None or k % refit_after_every == 0:
             model_ml = train_ml(data_set)
             #print('Retrained ML')
@@ -163,4 +163,4 @@ for data_set in data_sets:
         #print(k, 'ML Prediction:', pred_ml, 'actual:', data_set[k + 1], 'error:', math.fabs(pred_ml - data_set[k + 1]))
         print(pred_st, '\t', pred_ml[0], '\t', pred_rbm, '\t', data_set[k + 1])
 
-print('MSE: ', math.sqrt(mse_old), '\t', math.sqrt(mse_st), '\t', math.sqrt(mse_rbm), '\t', math.sqrt(mse_ml))
+print('RMSE Old:', math.sqrt(mse_old/n), '\tStatistica:l', math.sqrt(mse_st/n), '\tRobbinsMonroe', math.sqrt(mse_rbm/n), '\tMachineLearning', math.sqrt(mse_ml/n))
