@@ -18,7 +18,7 @@ max_history = 3  # The maximum amount of previous values to consider for predict
 rb_history = 5
 
 # Import the data
-raw_data = np.genfromtxt('data/fore_and_background_merge_desktop_avg.csv', delimiter=";", dtype=float, encoding="utf-8-sig")
+raw_data = np.genfromtxt('data/fore_and_background_merge_desktop.csv', delimiter=";", dtype=float, encoding="utf-8-sig")
 number_of_measurements = len(raw_data[0])
 
 # Parse the data file to data sets
@@ -108,10 +108,15 @@ def predict_ml(data_vector, model):
     return model.predict(validation_data)
 
 
+sum = 0
 mse_old = 0
 mse_st = 0
 mse_rbm = 0
 mse_ml = 0
+se_old = 0
+se_st = 0
+se_rbm = 0
+se_ml = 0
 n = 0
 
 # Simulate the time
@@ -119,7 +124,7 @@ for data_set in data_sets:
     # Starter model for ML
     model_ml = None
 
-    # Make a calculation predicting the whole timeline, based on the previosu data
+    # Make a calculation predicting the whole timeline, based on the previous data
     baseline = predict_old_way(data_set[:known_history])
 
     # Initialize RobbinsMonroe weights
@@ -127,17 +132,20 @@ for data_set in data_sets:
 
     for k in range(known_history, len(data_set) - 1):
         n += 1
+        sum += data_set[k]
         if model_ml is None or k % refit_after_every == 0:
             model_ml = train_ml(data_set)
             #print('Retrained ML')
 
         # Old way
         err_old = baseline - data_set[k + 1]
+        se_old += math.fabs(err_old)
         mse_old += pow(err_old, 2)
 
         # Statistical
         pred_st = predict_statistical(data_set[:k])
         err_st = pred_st - data_set[k + 1]
+        se_st += math.fabs(err_st)
         mse_st += pow(err_st, 2)
         #print(k, 'ST Prediction:', pred_st, 'actual:', data_set[k + 1], 'error:', math.fabs(pred_st - data_set[k + 1]))
 
@@ -150,17 +158,20 @@ for data_set in data_sets:
             sumv = 0
             for v in range(rb_history):
                 sumv += w_k[v] * data_set[k - v]
-            delta = 0.000000000005
+            delta = 0.000000000000005
             w[u] = w_k[u] - delta * (data_set[k] - sumv) * data_set[k - u]
         pred_rbm = predict_rbm(k, w, data_set)
         err_rbm = pred_rbm - data_set[k + 1]
+        se_rbm += math.fabs(err_rbm)
         mse_rbm += pow(err_rbm, 2)
 
         # Machine learning
         pred_ml = predict_ml(data_set[:k], model_ml)
         err_ml = pred_ml - data_set[k + 1]
+        se_ml += math.fabs(err_ml)
         mse_ml += pow(err_ml, 2)
-        #print(k, 'ML Prediction:', pred_ml, 'actual:', data_set[k + 1], 'error:', math.fabs(pred_ml - data_set[k + 1]))
-        print(baseline, '\t', pred_st, '\t', pred_ml[0], '\t', pred_rbm, '\t', data_set[k + 1])
+#        print(baseline, '\t', pred_st, '\t', pred_ml[0], '\t', pred_rbm, '\t', data_set[k + 1])
+        print(math.fabs(data_set[k + 1] - baseline), '\t', math.fabs(data_set[k + 1] - pred_st), '\t', math.fabs(data_set[k + 1] - pred_ml[0]), '\t', math.fabs(data_set[k + 1] - pred_rbm))
 
-print('RMSE Old:', math.sqrt(mse_old/n), '\tStatistica:l', math.sqrt(mse_st/n), '\tRobbinsMonroe', math.sqrt(mse_rbm/n), '\tMachineLearning', math.sqrt(mse_ml/n))
+#print('RMSE Old:', math.sqrt(mse_old/n), '\tStatistical', math.sqrt(mse_st/n), '\tRobbinsMonroe', math.sqrt(mse_rbm/n), '\tMachineLearning', math.sqrt(mse_ml/n))
+print('AVG error, baseline:', (se_old/n)/(sum/n), '\tStatistical', (se_st/n)/(sum/n), '\tRobbinsMonroe', (se_rbm/n)/(sum/n), '\tMachineLearning', (se_ml/n)/(sum/n))
