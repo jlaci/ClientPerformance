@@ -1,5 +1,7 @@
 import numpy as np
 import math as math
+import plotly.plotly as py
+import plotly.graph_objs as go
 from sklearn import linear_model
 
 # Parameters
@@ -119,6 +121,11 @@ se_rbm = 0
 se_ml = 0
 n = 0
 
+preds_baseline = []
+preds_st = []
+preds_rb = []
+preds_ml = []
+
 # Simulate the time
 for data_set in data_sets:
     # Starter model for ML
@@ -171,7 +178,15 @@ for data_set in data_sets:
         se_ml += math.fabs(err_ml)
         mse_ml += pow(err_ml, 2)
 #        print(baseline, '\t', pred_st, '\t', pred_ml[0], '\t', pred_rbm, '\t', data_set[k + 1])
+        preds_baseline = preds_baseline.append(math.fabs(data_set[k + 1] - baseline))
+        preds_st = preds_st.append(math.fabs(data_set[k + 1] - pred_st))
+        preds_rb = preds_rb.append(math.fabs(data_set[k + 1] - pred_rbm))
+        pred_ml = pred_ml.append(math.fabs(data_set[k + 1] - pred_ml[0]))
+
         print(math.fabs(data_set[k + 1] - baseline), '\t', math.fabs(data_set[k + 1] - pred_st), '\t', math.fabs(data_set[k + 1] - pred_ml[0]), '\t', math.fabs(data_set[k + 1] - pred_rbm))
 
 #print('RMSE Old:', math.sqrt(mse_old/n), '\tStatistical', math.sqrt(mse_st/n), '\tRobbinsMonroe', math.sqrt(mse_rbm/n), '\tMachineLearning', math.sqrt(mse_ml/n))
 print('AVG error, baseline:', (se_old/n)/(sum/n), '\tStatistical', (se_st/n)/(sum/n), '\tRobbinsMonroe', (se_rbm/n)/(sum/n), '\tMachineLearning', (se_ml/n)/(sum/n))
+
+data = [go.Histogram(x=preds_baseline)]
+py.iplot(data, filename='basic histogram')
