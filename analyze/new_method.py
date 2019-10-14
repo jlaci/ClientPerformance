@@ -135,7 +135,7 @@ for data_set in data_sets:
     baseline = predict_old_way(data_set[:known_history])
 
     # Initialize RobbinsMonroe weights
-    w = [1/rb_history for x in range(rb_history)]
+    w_rb = [1 / rb_history for x in range(rb_history)]
 
     for k in range(known_history, len(data_set) - 1):
         n += 1
@@ -158,7 +158,7 @@ for data_set in data_sets:
 
         # Robbins Monroe
         # Copy the previous state of the weight
-        w_k = w.copy()
+        w_k = w_rb.copy()
 
         # Update each w component based on the new data
         for u in range(rb_history):
@@ -166,8 +166,8 @@ for data_set in data_sets:
             for v in range(rb_history):
                 sumv += w_k[v] * data_set[k - v]
             delta = 0.000000000000005
-            w[u] = w_k[u] - delta * (data_set[k] - sumv) * data_set[k - u]
-        pred_rbm = predict_rbm(k, w, data_set)
+            w_rb[u] = w_k[u] - delta * (data_set[k] - sumv) * data_set[k - u]
+        pred_rbm = predict_rbm(k, w_rb, data_set)
         err_rbm = pred_rbm - data_set[k + 1]
         se_rbm += math.fabs(err_rbm)
         mse_rbm += pow(err_rbm, 2)
@@ -178,10 +178,10 @@ for data_set in data_sets:
         se_ml += math.fabs(err_ml)
         mse_ml += pow(err_ml, 2)
 #        print(baseline, '\t', pred_st, '\t', pred_ml[0], '\t', pred_rbm, '\t', data_set[k + 1])
-        preds_baseline = preds_baseline.append(math.fabs(data_set[k + 1] - baseline))
-        preds_st = preds_st.append(math.fabs(data_set[k + 1] - pred_st))
-        preds_rb = preds_rb.append(math.fabs(data_set[k + 1] - pred_rbm))
-        pred_ml = pred_ml.append(math.fabs(data_set[k + 1] - pred_ml[0]))
+        preds_baseline.append(math.fabs(data_set[k + 1] - baseline))
+        preds_st.append(math.fabs(data_set[k + 1] - pred_st))
+        preds_rb.append(math.fabs(data_set[k + 1] - pred_rbm))
+        preds_ml.append(math.fabs(data_set[k + 1] - pred_ml[0]))
 
         print(math.fabs(data_set[k + 1] - baseline), '\t', math.fabs(data_set[k + 1] - pred_st), '\t', math.fabs(data_set[k + 1] - pred_ml[0]), '\t', math.fabs(data_set[k + 1] - pred_rbm))
 
@@ -189,4 +189,4 @@ for data_set in data_sets:
 print('AVG error, baseline:', (se_old/n)/(sum/n), '\tStatistical', (se_st/n)/(sum/n), '\tRobbinsMonroe', (se_rbm/n)/(sum/n), '\tMachineLearning', (se_ml/n)/(sum/n))
 
 data = [go.Histogram(x=preds_baseline)]
-py.iplot(data, filename='basic histogram')
+#py.iplot(data, filename='basic histogram')
