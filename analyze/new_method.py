@@ -3,6 +3,9 @@ import math as math
 import plotly.plotly as py
 import plotly.graph_objs as go
 from sklearn import linear_model
+from sklearn import neural_network
+from math import exp
+
 
 # Parameters
 # Chain
@@ -89,14 +92,18 @@ def predict_rbm(k, w, data):
     return prediction
 
 
-def train_ml(data_vector):
+def format_for_ml(data_vector):
     # Format the data into feature and values for machine learning based predictors (with a sliding window over the data)
     ml_data = []
     # Start from the beginning of the data (we can first predict the end of the first data window)
     for value_to_predict in range(feature_vector_length, len(data_vector) - 1):
         ml_data.append(data_vector[value_to_predict - feature_vector_length:value_to_predict + 1])
 
-    ml_data = np.asarray(ml_data)
+    return np.asarray(ml_data)
+
+
+def train_ml(data_vector):
+    ml_data = format_for_ml(data_vector)
     value_column = len(ml_data[0]) - 1
     training_data = ml_data[:, list(range(0, value_column))]
 
@@ -110,21 +117,44 @@ def predict_ml(data_vector, model):
     return model.predict(validation_data)
 
 
-sum = 0
+def train_mlps(data_vector):
+    ml_data = format_for_ml(data_vector)
+    value_column = len(ml_data[0]) - 1
+    training_data = ml_data[:, list(range(0, value_column))]
+
+    #model = neural_network.MLPRegressor(learning_rate='invscaling', learning_rate_init=0.0005, power_t=0.7)
+    #model = neural_network.MLPRegressor(solver='sgd', learning_rate='invscaling', activation='logistic', learning_rate_init=0.03, power_t=0.1)
+    model = neural_network.MLPRegressor(hidden_layer_sizes=(100, 100, ), solver='sgd', learning_rate='invscaling', activation='logistic', learning_rate_init=0.03, power_t=0.1)
+
+    model.fit(training_data, ml_data[:, value_column])
+    return model
+
+
+def update_mlpr(data_vector, model):
+    ml_data = format_for_ml(data_vector)
+    value_column = len(ml_data[0]) - 1
+    training_data = ml_data[:, list(range(0, value_column))]
+    return model.partial_fit(training_data, ml_data[:, value_column])
+
+
+sum_data = 0
 mse_old = 0
 mse_st = 0
 mse_rbm = 0
 mse_ml = 0
+mse_ffn = 0
 se_old = 0
 se_st = 0
 se_rbm = 0
 se_ml = 0
+se_ffn = 0
 n = 0
 
 preds_baseline = []
 preds_st = []
 preds_rb = []
 preds_ml = []
+preds_ffn = []
 
 # Simulate the time
 for data_set in data_sets:
@@ -135,11 +165,14 @@ for data_set in data_sets:
     baseline = predict_old_way(data_set[:known_history])
 
     # Initialize RobbinsMonroe weights
-    w_rb = [1 / rb_history for x in range(rb_history)]
+    w = [1/rb_history for x in range(rb_history)]
+
+    # Initialize the FFN
+    model_ffn = train_mlps(data_set[:known_history])
 
     for k in range(known_history, len(data_set) - 1):
         n += 1
-        sum += data_set[k]
+        sum_data += data_set[k]
         if model_ml is None or k % refit_after_every == 0:
             model_ml = train_ml(data_set)
             #print('Retrained ML')
@@ -158,7 +191,7 @@ for data_set in data_sets:
 
         # Robbins Monroe
         # Copy the previous state of the weight
-        w_k = w_rb.copy()
+        w_k = w.copy()
 
         # Update each w component based on the new data
         for u in range(rb_history):
@@ -166,8 +199,8 @@ for data_set in data_sets:
             for v in range(rb_history):
                 sumv += w_k[v] * data_set[k - v]
             delta = 0.000000000000005
-            w_rb[u] = w_k[u] - delta * (data_set[k] - sumv) * data_set[k - u]
-        pred_rbm = predict_rbm(k, w_rb, data_set)
+            w[u] = w_k[u] - delta * (data_set[k] - sumv) * data_set[k - u]
+        pred_rbm = predict_rbm(k, w, data_set)
         err_rbm = pred_rbm - data_set[k + 1]
         se_rbm += math.fabs(err_rbm)
         mse_rbm += pow(err_rbm, 2)
@@ -177,16 +210,29 @@ for data_set in data_sets:
         err_ml = pred_ml - data_set[k + 1]
         se_ml += math.fabs(err_ml)
         mse_ml += pow(err_ml, 2)
+
+        # FFN
+        row = data_set[k - known_history:k]
+        # Predict
+        pred_ffn = predict_ml(data_set[:k], model_ffn)
+        err_ffn = pred_ffn - data_set[k + 1]
+        se_ffn += math.fabs(err_ffn)
+        mse_ffn += pow(err_ffn, 2)
+        # Update weights
+        model_ffn = update_mlpr(data_set[k - known_history:k], model_ffn)
+
+        # Print predicrtions
 #        print(baseline, '\t', pred_st, '\t', pred_ml[0], '\t', pred_rbm, '\t', data_set[k + 1])
         preds_baseline.append(math.fabs(data_set[k + 1] - baseline))
         preds_st.append(math.fabs(data_set[k + 1] - pred_st))
         preds_rb.append(math.fabs(data_set[k + 1] - pred_rbm))
         preds_ml.append(math.fabs(data_set[k + 1] - pred_ml[0]))
+        preds_ffn.append(math.fabs(data_set[k + 1] - pred_ffn))
 
-        print(math.fabs(data_set[k + 1] - baseline), '\t', math.fabs(data_set[k + 1] - pred_st), '\t', math.fabs(data_set[k + 1] - pred_ml[0]), '\t', math.fabs(data_set[k + 1] - pred_rbm))
+        print(math.fabs(data_set[k + 1] - baseline), '\t', math.fabs(data_set[k + 1] - pred_st), '\t', math.fabs(data_set[k + 1] - pred_ml[0]), '\t', math.fabs(data_set[k + 1] - pred_rbm), '\t', (math.fabs(data_set[k + 1] - pred_ffn)))
 
-#print('RMSE Old:', math.sqrt(mse_old/n), '\tStatistical', math.sqrt(mse_st/n), '\tRobbinsMonroe', math.sqrt(mse_rbm/n), '\tMachineLearning', math.sqrt(mse_ml/n))
-print('AVG error, baseline:', (se_old/n)/(sum/n), '\tStatistical', (se_st/n)/(sum/n), '\tRobbinsMonroe', (se_rbm/n)/(sum/n), '\tMachineLearning', (se_ml/n)/(sum/n))
+print('RMSE baseline:', math.sqrt(mse_old/n), '\tStatistical', math.sqrt(mse_st/n), '\tRobbinsMonroe', math.sqrt(mse_rbm/n), '\tLinearRegression', math.sqrt(mse_ml/n), '\tFFN', math.sqrt(mse_ffn/n))
+print('AVG error, baseline:', (se_old/n)/(sum_data/n), '\tStatistical', (se_st/n)/(sum_data/n), '\tRobbinsMonroe', (se_rbm/n)/(sum_data/n), '\tLinearRegression', (se_ml/n)/(sum_data/n), '\tFFN', (se_ffn/n)/(sum_data/n))
 
 data = [go.Histogram(x=preds_baseline)]
 #py.iplot(data, filename='basic histogram')
