@@ -1,15 +1,16 @@
 import numpy as np
 import math
 
-raw_data = np.genfromtxt('data/fore_and_background_merge_desktop.csv', delimiter=";", dtype=float, encoding="utf-8-sig")
+raw_data = np.genfromtxt('data/time-window/tw1.csv', delimiter=";", dtype=float, encoding="utf-8-sig")
+original_delta = 100
+
 number_of_measurements = len(raw_data[0])
 
 ##########################################################################################
 # Global parameters
 known_history = 10  # The number of previous observed values
-original_delta = 1000
-delta_min = 1000
-delta_step = 1000
+delta_min = 100
+delta_step = 100
 delta_max = 10000
 ##########################################################################################
 
@@ -64,6 +65,9 @@ def convert_data_set(data_set, original_delta, delta):
 
     return result
 
+# Mérések lefuttatása
+best_delta = delta_min
+best_delta_value = -1
 
 for delta in range(delta_min, delta_max, delta_step):
     remaining_error = 0
@@ -78,8 +82,15 @@ for delta in range(delta_min, delta_max, delta_step):
         r_inverse_matrix = np.linalg.inv(r_matrix)
         r_vector_transposed = np.array(r_vector).T
 
-        r_0 = data_set[known_history + 1]
-        rRr = np.matmul(np.matmul(r_vector_transposed, r_matrix), r_vector)
-        remaining_error += math.fabs(r_0 * r_0 - rRr)
+        r_0 = data_set[known_history + 1] * data_set[known_history + 1]  # E(x^2)
+        rRr = np.matmul(np.matmul(r_vector_transposed, r_matrix), r_vector)  # r
+        remaining_error += math.fabs(r_0 - rRr)
 
-    print('Delta', delta, ':', remaining_error / len(data_sets))
+    avg_remaining_error = remaining_error / len(data_sets)
+    if best_delta_value == -1 or avg_remaining_error < best_delta_value:
+        best_delta_value = avg_remaining_error
+        best_delta = delta
+
+    print('Delta', delta, ':', avg_remaining_error)
+
+print('Best delta', best_delta, ':', best_delta_value)
