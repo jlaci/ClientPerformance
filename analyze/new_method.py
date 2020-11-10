@@ -1,7 +1,9 @@
+import time
+
 import numpy as np
 import math as math
-import plotly.plotly as py
-import plotly.graph_objs as go
+#import plotly.plotly as py
+#import plotly.graph_objs as go
 from sklearn import linear_model
 from sklearn import neural_network
 from math import exp
@@ -156,6 +158,10 @@ preds_rb = []
 preds_ml = []
 preds_ffn = []
 
+pred_st_time = 0
+pred_st_count = 0
+pred_st_start = 0
+
 # Simulate the time
 for data_set in data_sets:
     # Starter model for ML
@@ -183,7 +189,11 @@ for data_set in data_sets:
         mse_old += pow(err_old, 2)
 
         # Statistical
+        pred_st_start = time.time()
         pred_st = predict_statistical(data_set[:k])
+        pred_st_time += (time.time() - pred_st_start)
+        pred_st_count += 1
+
         err_st = pred_st - data_set[k + 1]
         se_st += math.fabs(err_st)
         mse_st += pow(err_st, 2)
@@ -233,6 +243,7 @@ for data_set in data_sets:
 
 print('RMSE baseline:', math.sqrt(mse_old/n), '\tStatistical', math.sqrt(mse_st/n), '\tRobbinsMonroe', math.sqrt(mse_rbm/n), '\tLinearRegression', math.sqrt(mse_ml/n), '\tFFN', math.sqrt(mse_ffn/n))
 print('AVG error, baseline:', (se_old/n)/(sum_data/n), '\tStatistical', (se_st/n)/(sum_data/n), '\tRobbinsMonroe', (se_rbm/n)/(sum_data/n), '\tLinearRegression', (se_ml/n)/(sum_data/n), '\tFFN', (se_ffn/n)/(sum_data/n))
+print('Statistical total time: ', pred_st_time * 1000, 'ms, count: ', pred_st_count, ' average: ', (pred_st_time / pred_st_count) * 1000)
 
-data = [go.Histogram(x=preds_baseline)]
+#data = [go.Histogram(x=preds_baseline)]
 #py.iplot(data, filename='basic histogram')
