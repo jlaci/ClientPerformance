@@ -1,26 +1,26 @@
 import numpy as np
 import math
 
-raw_data = np.genfromtxt('data/time-window/tw1.csv', delimiter=";", dtype=float, encoding="utf-8-sig")
+raw_data = np.genfromtxt('data/time-window/tw2.csv', delimiter=";", dtype=float, encoding="utf-8-sig")
 original_delta = 100    # Original time window used in the measurement file
 
 number_of_measurements = len(raw_data[0])
 
 ##########################################################################################
 # Global parameters
-known_history = 10      # The number of previous observed values used for prefiction
+known_history = 10      # The number of previous observed values used for prediction
 delta_min = 100         # Minimum time window size
 delta_step = 100        # Increment of time window size
-delta_max = 1000        # Maximum of the time window size
+delta_max = 2500        # Maximum of the time window size
 
 # Optimalization parameters
 alpha_min = 0
 alpha_max = 100
 alpha_step = 1
 
-# Measurement overhead (% of the total client performance contribution)
+# Measurement overhead (milliseconds)
 network_time = 100  # The time it takes to upload the result to the server
-processing_time = 10  # Number of milliseconds it takes for the server to receive process the anwer
+processing_time = 10  # Number of milliseconds it takes for the server to receive process the answer
 prediction_time = 0.1  # milliseconds for prediction
 
 ##########################################################################################
@@ -96,7 +96,7 @@ def measurement_overhead(delta, data_set):
     # Normalized lost performance
     return lost_performance / max
 
-# Mérések lefuttatása
+# Running the measurements
 best_overall_delta = delta_min
 best_overall_delta_value = -1
 best_overall_alpha_value = -1.0
